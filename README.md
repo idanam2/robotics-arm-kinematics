@@ -1,62 +1,59 @@
-# 5-DOF Robot Arm: Kinematics in MATLAB
+# 6-DOF Robot Arm: Kinematics and Simulation in MATLAB
 
-Final project for an *Introduction to Robotics* course. A 5-DOF pen-holding robot arm is modelled with
-Denavit-Hartenberg parameters. The code solves its forward and inverse kinematics and animates the arm
-(from SolidWorks STL models) while the pen traces an ellipse in space.
-
-![Ellipse trajectory](images/ellipse.png)
+Final project for an *Introduction to Robotics* course. A 6-DOF pen-holding robot arm is modelled with
+Denavit-Hartenberg (DH) parameters. The project includes an interactive 3D simulator built from SolidWorks STL
+models, a numerical inverse-kinematics solver that makes the pen tip trace a tilted ellipse in space, and an
+analytical solver that returns all 8 inverse-kinematics solutions for a point.
 
 ## What's inside
 
 | File | What it does |
 |---|---|
-| `forward_kinematics.mlx` | Symbolic forward kinematics: builds `T06` from the DH table (Live Script) |
-| `ik_single_point.m` | Inverse kinematics for one target point and pen direction (`lsqnonlin`) |
-| `ik_ellipse.m` | Generates 101 points on a tilted ellipse and solves the joint angles for each one |
-| `animate_robot.m` | Animates the STL model of the arm following the solved joint angles |
-| `models/` | STL parts of the arm exported from SolidWorks (base, links, wrist, pencil) |
-| `images/` | Coordinate frames of the arm and result plots |
+| `robot_gui_ellipse.m` | Interactive 3D simulator: six joint sliders, live coordinate frames, and an **Animate Red Ellipse** button |
+| `inverse_kinematics_8sol.m` | Analytical inverse kinematics: enter a target point and get all 8 joint-angle solutions |
+| `models/` | STL parts of the arm exported from SolidWorks (base, links, end link, pen holder) |
 
-## DH table (mm / degrees)
+## Simulator
 
-| i | a(i-1) | alpha(i-1) | d(i) | theta(i) |
-|---|---|---|---|---|
-| 1 | 0 | 0 | 107 | theta1 |
-| 2 | 20 | 90 | 0 | theta2 |
-| 3 | 150 | 0 | 0 | theta3 |
-| 4 | 100 | 0 | 0 | theta4 |
-| 5 | 68.5 | 0 | 0 | theta5 |
-| 6 (pen) | 29 | -90 | 239 | 0 |
+`robot_gui_ellipse` loads the STL parts and moves them with DH transforms. The six sliders set the joint angles,
+and the pen tip is marked with a black dot. The frame of every link is drawn with its X (red), Y (green) and
+Z (blue) axes.
 
-![Coordinate frames](images/frames.jpg)
+**Animate Red Ellipse** makes the pen tip follow a tilted ellipse (101 points, semi-axes 150 and 100 mm,
+centre at (180, 0, 300) mm, rotated by Z 25°, Y 15°, X 10°). For each point the joint angles are found numerically
+with `fminsearch`. This is repeated for 8 different starting guesses, which gives the 8 solution families.
+The result of each run is saved to the MATLAB workspace as a table named `Solution_Table_1` ... `Solution_Table_8`,
+with the pen position and the joint angles of every point.
 
-## How it works
+## Analytical inverse kinematics
 
-1. `DH(a, alpha, d, theta)` builds one homogeneous transform, and multiplying all six gives the pen pose `T06`.
-2. The inverse problem is solved numerically: `lsqnonlin` finds the 5 joint angles that put the pen tip at the
-   target point **and** point the pen along the requested direction. The joint limits are given as bounds.
-3. For the ellipse, each of the 101 points is rotated in space (`rotx`, `roty`, `rotz`) and solved in turn.
+`inverse_kinematics_8sol` solves the arm in closed form for a pen held perpendicular to the page:
 
-![Single point solution](images/single-point.png)
+1. Find the wrist centre by moving back from the target along the pen.
+2. Check that the point is within reach (otherwise it reports `Point out of reach!`).
+3. Solve the base angle (2 solutions), the elbow (2 solutions: up and down) and the shoulder (law of cosines).
+4. Solve the wrist (2 solutions: normal and flipped by 180°).
+
+2 × 2 × 2 = **8 solutions**, printed in a table with the joint names.
+
+Robot data used by the solver: upper arm and forearm 125 mm each, tool offset 37.5 mm, pen length 100 mm.
 
 ## Run it
 
-Requirements: MATLAB with the Symbolic Math Toolbox and Optimization Toolbox. `rotx/roty/rotz` come from
-the Robotics System Toolbox (or Navigation Toolbox), and `stlread` is built in.
+Requirements: MATLAB R2018b or newer (for `stlread`). No extra toolboxes. Run from the repository root so that
+`models/` is found:
 
 ```matlab
-ik_ellipse      % solves all joint angles (slow: symbolic substitution on every iteration)
-animate_robot   % animates the arm (needs the variables created above)
+robot_gui_ellipse            % opens the simulator
+inverse_kinematics_8sol      % asks for X, Y, Z and prints 8 solutions
 ```
 
-Run both from the repository root so that `models/` is found. `ik_single_point` and
-`forward_kinematics.mlx` run on their own.
+Angles are in degrees and lengths in millimetres. If an STL file is missing, the simulator falls back to simple
+placeholder shapes instead of crashing.
 
 ## Notes
 
-- Angles are in degrees and lengths in millimetres.
-- The solver uses a numerical optimizer with a zero initial guess, so very different targets might need a
-  better starting point.
+- Some code comments are in Hebrew.
 - Course material (assignment text, report) is not included.
 
 ## License
